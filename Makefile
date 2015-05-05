@@ -22,13 +22,13 @@ DEPS	=	$(OBJ:obj/%.o=obj/%.d)
 
 TARGET	=	mhddfs
 
-CFLAGS	=	-Wall $(shell pkg-config fuse --cflags) \
-			-DFUSE_USE_VERSION=26 -MMD
+CFLAGS	=	-Wall $(shell pkg-config fuse glib-2.0 --cflags) \
+			-DFUSE_USE_VERSION=26 -MMD -g
 ifdef WITHOUT_XATTR
 CFLAGS	+=	-DWITHOUT_XATTR
 endif
 
-LDFLAGS	=	$(shell pkg-config fuse --libs)
+LDFLAGS	=	$(shell pkg-config fuse glib-2.0 --libs)
 
 FORTAR	=	src COPYING LICENSE README Makefile \
 		README.ru.UTF-8 ChangeLog mhddfs.1 \
