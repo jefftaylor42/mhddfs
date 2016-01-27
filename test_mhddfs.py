@@ -11,6 +11,8 @@ def sh(cmd):
     subprocess.check_call(cmd, shell=True)
 
 def test_readdir(mhddfs):
+    """Simple test that readdir() is working.  Previously, this test would
+        trigger memory errors detectable by valgrind."""
     # Touch some files.
     sh("touch test1/1")
     sh("touch test1/2")
@@ -33,6 +35,10 @@ def rewrite_and_rename(i):
     os.rename(tmp_file, file)
 
 def test_parallel_rename(mhddfs):
+    """Create a file with some text, and then have some threads constantly copy
+        and rename over it.  If the rename() operation is atomic, we should
+        never see a "File does not exist" error.
+    """
     str = "hello, world"
     file = "mnt/testfile"
 
@@ -60,6 +66,15 @@ def assert_valgrind():
         raise AssertionError("Memory errors in tested program")
 
 @pytest.fixture
+def nomhddfs(request):
+    os.mkdir("mnt")
+
+    def cleanup():
+        sh("rm -rf mnt")
+
+    request.addfinalizer(cleanup)
+
+@pytest.fixture
 def mhddfs(request):
     sh("rm -rf test1 test2 mnt")
     os.mkdir("test1")
@@ -72,7 +87,7 @@ def mhddfs(request):
     else:
         prefix = ""
 
-    subprocess.Popen(prefix + "./mhddfs_noxattr_glib test1,test2 mnt",
+    subprocess.Popen(prefix + "./mhddfs test1,test2 mnt",
                     shell=True)
     time.sleep(1) # Apparantly mhddfs takes some time to start.
 
