@@ -2,6 +2,9 @@
 import pytest
 import os, shutil, subprocess
 import time
+import random
+import string
+import multiprocessing
 
 def sh(cmd):
     import subprocess
@@ -18,6 +21,35 @@ def test_readdir(mhddfs):
 
     # ls the aggregated directory to show they're all there.
     assert set(os.listdir("mnt")) == {'1', '2', '3', '4', '5', '6'}
+
+def rewrite_and_rename(i):
+    file = "mnt/testfile"
+
+    with open(file) as f:
+        text = f.read()
+    tmp_file = file + '.tmp.' + ''.join(random.choice(string.ascii_lowercase) for _ in range(10))
+    with open(tmp_file, 'w') as f:
+        f.write(text)
+    os.rename(tmp_file, file)
+
+def test_parallel_rename(mhddfs):
+    str = "hello, world"
+    file = "mnt/testfile"
+
+    # Create an empty file
+    with open(file, 'w') as f:
+        f.write(str)
+
+    # Try doing lots of writes in parallel.
+    pool = multiprocessing.Pool(5)
+    num = 1000
+    for _ in range(10):
+        rewrite_and_rename(0)
+    for _ in pool.imap_unordered(rewrite_and_rename, range(num)):
+        pass
+
+    with open(file, 'r') as f:
+        assert f.read() == str
 
 def assert_valgrind():
     """Check that valgrind hasn't detected errors."""
