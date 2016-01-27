@@ -34,14 +34,22 @@ def mhddfs(request):
     os.mkdir("test2")
     os.mkdir("mnt")
 
-    subprocess.Popen("valgrind --xml=yes --xml-file=valgrind-out.xml "
-                    "./mhddfs_noxattr_glib test1,test2 mnt",
+    valgrind = True
+    if valgrind:
+        prefix = "valgrind --xml=yes --xml-file=valgrind-out.xml "
+    else:
+        prefix = ""
+
+    subprocess.Popen(prefix + "./mhddfs_noxattr_glib test1,test2 mnt",
                     shell=True)
     time.sleep(1) # Apparantly mhddfs takes some time to start.
 
     def cleanup():
-        sh("fusermount -uz mnt")
+        sh("fusermount -u mnt")
+        subprocess.call("fusermount -uz mnt", shell=True)
         sh("rm -rf test1 test2 mnt")
-        assert_valgrind()
+        if valgrind:
+            assert_valgrind()
 
     request.addfinalizer(cleanup)
+
