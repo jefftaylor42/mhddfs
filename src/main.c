@@ -628,7 +628,11 @@ static int mhdd_rename(const char *from, const char *to)
 	}
 	free (pto);
 
-	/* rename cycle */
+	int *renamed_on = calloc(mhdd.cdirs, sizeof(int));
+	if (!renamed_on)
+		return -ENOMEM;
+
+	/* rename first, then unlink, so we never see a nonexistent file */
 	for (i = 0; i < mhdd.cdirs; i++) {
 		obj_to   = create_path(mhdd.dirs[i], to);
 		obj_from = create_path(mhdd.dirs[i], from);
@@ -651,9 +655,24 @@ static int mhdd_rename(const char *from, const char *to)
 			if (res == -1) {
 				free(obj_from);
 				free(obj_to);
+				free(renamed_on);
 				return -errno;
 			}
-		} else {
+			renamed_on[i] = 1;
+		}
+		free(obj_from);
+		free(obj_to);
+	}
+
+	/* now unlink */
+	for (i = 0; i < mhdd.cdirs; i++) {
+		/* don't delete if we already renamed. */
+		if (renamed_on[i])
+			continue;
+
+		obj_to   = create_path(mhdd.dirs[i], to);
+		obj_from = create_path(mhdd.dirs[i], from);
+		if (stat(obj_from, &sfrom) != 0) {
 			/* from and to are files, so we must remove to files */
 			if (from_is_file && to_is_file && !from_is_dir) {
 				if (stat(obj_to, &sto) == 0) {
@@ -668,11 +687,11 @@ static int mhdd_rename(const char *from, const char *to)
 				}
 			}
 		}
-
 		free(obj_from);
 		free(obj_to);
 	}
 
+	free(renamed_on);
 	return 0;
 }
 
